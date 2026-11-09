@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>UNIDAD5 · Dino Infernal</title>
+<meta name="description" content="Arcade: un dinosaurio que lanza fuego y evoluciona mientras lucha contra hordas de humanos armados." />
+<style>
+  :root { color-scheme: dark; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:#0b0705; font-family:'Segoe UI', system-ui, -apple-system, sans-serif; }
+  #game { display:block; width:100vw; height:100vh; cursor:crosshair; }
+
+  #hud { position:fixed; inset:0; pointer-events:none; padding:16px 20px; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+  .panel { background:rgba(12,7,5,.55); border:1px solid rgba(255,140,66,.18); border-radius:14px; padding:12px 14px; backdrop-filter:blur(6px); box-shadow:0 10px 30px rgba(0,0,0,.35); }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:14px; font-size:13px; color:#ffd9a8; letter-spacing:.05em; text-shadow:0 2px 8px #000; }
+  .row.small { font-size:11px; color:#c8a486; margin-top:6px; }
+  .tag { font-weight:800; text-transform:uppercase; font-size:12px; }
+  #evoName { font-size:17px; font-weight:900; letter-spacing:.08em; }
+  .bar { width:250px; max-width:40vw; height:14px; margin-top:8px; border-radius:8px; background:rgba(255,255,255,.07); overflow:hidden; border:1px solid rgba(255,255,255,.12); }
+  .bar > i { display:block; height:100%; width:100%; transition:width .1s linear; }
+  #hpFill { background:linear-gradient(90deg,#ff3d3d,#ff9d4d); }
+  #xpFill { background:linear-gradient(90deg,#4dffb8,#4dd2ff); }
+  #panelRight { min-width:150px; }
+  #panelRight .row { margin:3px 0; }
+
+  #powers { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; gap:10px; pointer-events:none; flex-wrap:wrap; justify-content:center; padding:0 12px; }
+  .chip { display:flex; align-items:center; gap:8px; background:rgba(12,7,5,.6); border:1px solid rgba(255,140,66,.2); border-radius:11px; padding:7px 12px; font-size:12px; color:#ffd9a8; backdrop-filter:blur(6px); }
+  .chip .key { background:linear-gradient(180deg,#3a1c10,#23100a); border:1px solid rgba(255,150,80,.4); color:#ffb56b; font-weight:800; padding:2px 7px; border-radius:6px; font-size:11px; }
+  .chip .cd { color:#8ce6b0; font-size:11px; font-weight:700; min-width:42px; text-align:right; }
+  .chip.locked { opacity:.35; }
+  .chip.locked .cd { color:#ff7b7b; }
+
+  #overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px; background:radial-gradient(circle at 50% 40%, rgba(60,15,5,.55), rgba(5,3,2,.88)); backdrop-filter:blur(3px); z-index:10; }
+  #overlay .card { width:min(620px, 94vw); text-align:center; background:linear-gradient(180deg, rgba(30,14,9,.92), rgba(14,8,6,.95)); border:1px solid rgba(255,140,66,.25); border-radius:22px; padding:34px 30px; box-shadow:0 30px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05); }
+  #overlay h1 { font-size:clamp(34px, 7vw, 62px); letter-spacing:.04em; line-height:.95; color:#ffb56b; text-shadow:0 0 28px rgba(255,120,40,.6), 0 4px 0 #6d2408; margin-bottom:14px; }
+  #overlay h1 span { display:block; color:#ff5b2e; font-size:.72em; letter-spacing:.3em; text-shadow:0 0 34px rgba(255,60,0,.8); }
+  #overlay .sub { color:#e7c6a8; font-size:15px; line-height:1.55; max-width:440px; margin:0 auto 22px; }
+  #overlay .keys { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:8px 14px; text-align:left; margin:0 auto 24px; max-width:480px; }
+  #overlay .keys > div { display:flex; justify-content:space-between; gap:10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,140,66,.12); border-radius:9px; padding:7px 11px; font-size:12px; }
+  #overlay .keys b { color:#ffb56b; }
+  #overlay .keys span { color:#c9a486; }
+  #overlay .stats { display:flex; justify-content:center; gap:26px; margin-bottom:24px; flex-wrap:wrap; }
+  #overlay .stats div { display:flex; flex-direction:column; }
+  #overlay .stats b { font-size:30px; color:#ffd23f; }
+  #overlay .stats span { font-size:11px; color:#c9a486; text-transform:uppercase; letter-spacing:.12em; }
+  #overlay button { pointer-events:auto; cursor:pointer; border:0; border-radius:12px; padding:14px 42px; font-size:16px; font-weight:900; letter-spacing:.08em; color:#2a0f05; background:linear-gradient(180deg,#ffcf6b,#ff9a3d); box-shadow:0 10px 24px rgba(255,120,40,.35), inset 0 -3px 0 rgba(120,50,0,.35); transition:transform .1s, box-shadow .1s; }
+  #overlay button:hover { transform:translateY(-2px); box-shadow:0 14px 30px rgba(255,120,40,.5), inset 0 -3px 0 rgba(120,50,0,.35); }
+  #overlay button:active { transform:translateY(1px); }
+  #overlay .best { margin-top:18px; color:#a9876d; font-size:12px; letter-spacing:.1em; text-transform:uppercase; }
+  @media (max-width:640px) {
+    .bar { width:150px; }
+    #panelRight { min-width:110px; }
+    .chip { padding:6px 9px; font-size:11px; }
+    .chip .cd { display:none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="panel">
+    <div class="row"><span class="tag" id="evoName">RAPTOR</span><span id="levelTxt">Nv. 1</span></div>
+    <div class="bar"><i id="hpFill"></i></div>
+    <div class="bar"><i id="xpFill"></i></div>
+    <div class="row small"><span id="hpTxt">100 / 100</span><span id="xpTxt">0 / 30 XP</span></div>
+  </div>
+  <div class="panel" id="panelRight">
+    <div class="row"><span class="tag">Oleada</span><span id="waveTxt">1</span></div>
+    <div class="row"><span class="tag">Puntos</span><span id="scoreTxt">0</span></div>
+    <div class="row"><span class="tag">Bajas</span><span id="killsTxt">0</span></div>
+  </div>
+</div>
+
+<div id="powers">
+  <div class="chip locked" id="chipDash"><span class="key">SHIFT</span><span>Esquivar</span><span class="cd"></span></div>
+  <div class="chip locked" id="chipNova"><span class="key">E</span><span>Nova de fuego</span><span class="cd"></span></div>
+  <div class="chip locked" id="chipMeteor"><span class="key">Q</span><span>Meteoros</span><span class="cd"></span></div>
+</div>
+
+<div id="overlay"></div>
+
+<script>
+(() => {
+'use strict';
+
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+const overlay = document.getElementById('overlay');
+const hud = {
+  evoName: document.getElementById('evoName'),
+  levelTxt: document.getElementById('levelTxt'),
+  hpFill: document.getElementById('hpFill'),
+  xpFill: document.getElementById('xpFill'),
+  hpTxt: document.getElementById('hpTxt'),
+  xpTxt: document.getElementById('xpTxt'),
+  waveTxt: document.getElementById('waveTxt'),
+  scoreTxt: document.getElementById('scoreTxt'),
+  killsTxt: document.getElementById('killsTxt'),
+  chipDash: document.getElementById('chipDash'),
+  chipNova: document.getElementById('chipNova'),
+  chipMeteor: document.getElementById('chipMeteor'),
+};
+
+let W = 0, H = 0;
+function resize() {
+  W = cv.width = Math.floor(window.innerWidth);
+  H = cv.height = Math.floor(window.innerHeight);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+function hexA(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+}
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = clamp(((n >> 16) & 255) + amt, 0, 255);
+  const g = clamp(((n >> 8) & 255) + amt, 0, 255);
+  const b = clamp((n & 255) + amt, 0, 255);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+const EVOLUTIONS = [
+  { name: 'Raptor',              color: '#6ee35a', glow: '#a8ff7a', speed: 235, maxHp: 100, dmg: 15, cd: 0.30, projSpeed: 560, spread: 1, explode: false, radius: 24 },
+  { name: 'Pyroraptor',          color: '#ffd23f', glow: '#ffe98a', speed: 268, maxHp: 140, dmg: 21, cd: 0.25, projSpeed: 640, spread: 1, explode: false, radius: 25 },
+  { name: 'Rex Volcanico',       color: '#ff8c42', glow: '#ffb56b', speed: 252, maxHp: 210, dmg: 30, cd: 0.30, projSpeed: 660, spread: 1, explode: true,  radius: 30 },
+  { name: 'Titan del Infierno',  color: '#ff3d3d', glow: '#ff7b7b', speed: 284, maxHp: 320, dmg: 38, cd: 0.24, projSpeed: 720, spread: 3, explode: true,  radius: 34 },
+];
+const EVO_LEVELS = [1, 3, 5, 8];
+
+const ENEMY_TYPES = [
+  { id: 'spear',  hp: 32,  speed: 96,  r: 15, dmg: 9,  xp: 12, cd: 1.9,  projSpeed: 300, projR: 5, projColor: '#e0b26a', color: '#c98b5e', minWave: 1, ranged: true },
+  { id: 'archer', hp: 26,  speed: 114, r: 14, dmg: 11, xp: 16, cd: 1.45, projSpeed: 440, projR: 4, projColor: '#7fd6ff', color: '#9ad1ff', minWave: 2, ranged: true },
+  { id: 'gunner', hp: 48,  speed: 88,  r: 17, dmg: 13, xp: 22, cd: 1.15, projSpeed: 600, projR: 5, projColor: '#ffe14d', color: '#b9b9c9', minWave: 4, ranged: true },
+  { id: 'brute',  hp: 150, speed: 68,  r: 25, dmg: 20, xp: 36, cd: 1.0,  color: '#8a2f2f', minWave: 6, ranged: false },
+];
+
+const keys = {};
+const mouse = { x: 0, y: 0, down: false, moved: false };
+mouse.x = W / 2;
+mouse.y = H / 2;
+
+window.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault();
+  if (e.code === 'Enter') {
+    if (game.state === 'menu' || game.state === 'gameover') newGame();
+    else if (game.state === 'paused') togglePause();
+  }
+  if (e.code === 'Escape') togglePause();
+  if (e.code === 'KeyE') castNova();
+  if (e.code === 'KeyQ') castMeteor();
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') tryDash();
+});
+window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+cv.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; mouse.moved = true; });
+cv.addEventListener('mousedown', (e) => {
+  mouse.down = true;
+  if (e.button === 2) castMeteor();
+});
+window.addEventListener('mouseup', () => { mouse.down = false; });
+cv.addEventListener('contextmenu', (e) => e.preventDefault());
+window.addEventListener('blur', () => {
+  for (const k in keys) keys[k] = false;
+  mouse.down = false;
+});
+
+let dino, game, enemies, projectiles, eprojectiles, particles, pickups, floaters, meteors, embers;
+let best = Number(localStorage.getItem('dino-best') || 0);
+
+function recomputeStats(healFrac) {
+  const e = EVOLUTIONS[dino.evo];
+  dino.speed = e.speed;
+  dino.r = e.radius;
+  dino.maxHp = e.maxHp + (dino.level - 1) * 12;
+  if (healFrac >= 1) dino.hp = dino.maxHp;
+  else dino.hp = Math.min(dino.maxHp, dino.hp + dino.maxHp * healFrac);
+}
+
+function resetWorld(state) {
+  dino = {
+    x: W / 2, y: H / 2, r: 24, speed: 235, aim: 0, facing: 1, walk: 0,
+    level: 1, xp: 0, xpNext: 30, evo: 0,
+    hp: 100, maxHp: 100, fireCd: 0, dashCd: 0, dash: 0, dashDir: 0,
+    novaCd: 0, meteorCd: 0, invuln: 0,
+  };
+  recomputeStats(1);
+  game = { state: state, time: 0, wave: 1, waveTimer: 0, spawnCd: 1.0, score: 0, kills: 0, shake: 0, flash: 0 };
+  enemies = [];
+  projectiles = [];
+  eprojectiles = [];
+  particles = [];
+  pickups = [];
+  floaters = [];
+  meteors = [];
+}
+
+function newGame() {
+  resetWorld('playing');
+  overlay.style.display = 'none';
+  overlay.innerHTML = '';
+}
+
+function showMenu() {
+  overlay.style.display = 'flex';
+  overlay.innerHTML =
+    '<div class="card">' +
+      '<h1>DINO<span>INFERNAL</span></h1>' +
+      '<p class="sub">Un dinosaurio contra hordas de humanos armados. Escupe fuego, devora almas y evoluciona para desatar poderes devastadores.</p>' +
+      '<div class="keys">' +
+        '<div><b>WASD / Flechas</b><span>Mover</span></div>' +
+        '<div><b>Raton / Espacio</b><span>Lanzar fuego</span></div>' +
+        '<div><b>Shift</b><span>Esquivar (evo 2)</span></div>' +
+        '<div><b>E</b><span>Nova (evo 3)</span></div>' +
+        '<div><b>Q</b><span>Meteoros (evo 4)</span></div>' +
+        '<div><b>Esc</b><span>Pausa</span></div>' +
+      '</div>' +
+      '<button data-action="start">JUGAR</button>' +
+      '<p class="best">Record: ' + best + '</p>' +
+    '</div>';
+}
+
+function showGameOver() {
+  overlay.style.display = 'flex';
+  overlay.innerHTML =
+    '<div class="card">' +
+      '<h1>EXTINCION</h1>' +
+      '<p class="sub">Los humanos te han derrotado... por ahora.</p>' +
+      '<div class="stats">' +
+        '<div><b>' + game.score + '</b><span>Puntos</span></div>' +
+        '<div><b>' + game.kills + '</b><span>Bajas</span></div>' +
+        '<div><b>' + game.wave + '</b><span>Oleada</span></div>' +
+        '<div><b>' + dino.level + '</b><span>Nivel</span></div>' +
+      '</div>' +
+      '<button data-action="start">REINTENTAR</button>' +
+      '<p class="best">Record: ' + best + '</p>' +
+    '</div>';
+}
+
+function togglePause() {
+  if (!game) return;
+  if (game.state === 'playing') {
+    game.state = 'paused';
+    overlay.style.display = 'flex';
+    overlay.innerHTML = '<div class="card"><h1>PAUSA</h1><button data-action="resume">CONTINUAR</button></div>';
+  } else if (game.state === 'paused') {
+    game.state = 'playing';
+    overlay.style.display = 'none';
+    overlay.innerHTML = '';
+  }
+}
+
+overlay.addEventListener('click', (e) => {
+  const action = e.target && e.target.dataset ? e.target.dataset.action : null;
+  if (action === 'start') newGame();
+  if (action === 'resume') togglePause();
+});
+
+function movementVector() {
+  let x = 0, y = 0;
+  if (keys.KeyA || keys.ArrowLeft) x -= 1;
+  if (keys.KeyD || keys.ArrowRight) x += 1;
+  if (keys.KeyW || keys.ArrowUp) y -= 1;
+  if (keys.KeyS || keys.ArrowDown) y += 1;
+  if (x && y) { x *= Math.SQRT1_2; y *= Math.SQRT1_2; }
+  return { x: x, y: y };
+}
+
+function burst(x, y, n, color, speed) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * TAU;
+    const s = rand(speed * 0.25, speed);
+    particles.push({
+      x: x, y: y,
+      vx: Math.cos(a) * s,
+      vy: Math.sin(a) * s,
+      r: rand(1.5, 4.5),
+      life: rand(0.25, 0.7),
+      max: 0.7,
+      color: color,
+    });
+  }
+}
+
+function addFloat(x, y, text, color, size) {
+  floaters.push({ x: x, y: y, text: text, life: 1.6, max: 1.6, color: color, size: size || 18 });
+}
+
+function hint(text) {
+  if (!dino) return;
+  addFloat(dino.x, dino.y - dino.r - 26, text, '#ff9d4d', 14);
+}
+
+function fire() {
+  if (game.state !== 'playing' || dino.fireCd > 0) return;
+  const e = EVOLUTIONS[dino.evo];
+  dino.fireCd = e.cd;
+  const base = dino.aim;
+  const n = e.spread;
+  for (let i = 0; i < n; i++) {
+    const off = n === 1 ? 0 : (i - (n - 1) / 2) * 0.17;
+    const a = base + off + rand(-0.03, 0.03);
+    projectiles.push({
+      x: dino.x + Math.cos(a) * dino.r * 1.1,
+      y: dino.y + Math.sin(a) * dino.r * 1.1,
+      vx: Math.cos(a) * e.projSpeed,
+      vy: Math.sin(a) * e.projSpeed,
+      r: 8 + dino.evo * 1.6,
+      dmg: e.dmg + (dino.level - 1) * 1.7,
+      life: 1.3,
+      explode: e.explode,
+      color: e.glow,
+    });
+  }
+  game.shake = Math.max(game.shake, 4);
+  burst(dino.x + Math.cos(base) * dino.r * 1.2, dino.y + Math.sin(base) * dino.r * 1.2, 7, e.glow, 170);
+}
+
+function tryDash() {
+  if (game.state !== 'playing') return;
+  if (dino.evo < 1) { hint('Evoluciona a Pyroraptor para esquivar'); return; }
+  if (dino.dashCd > 0) return;
+  const mv = movementVector();
+  let a = (mv.x || mv.y) ? Math.atan2(mv.y, mv.x) : dino.aim;
+  dino.dash = 0.2;
+  dino.dashDir = a;
+  dino.dashCd = 1.6;
+  dino.invuln = Math.max(dino.invuln, 0.35);
+  burst(dino.x, dino.y, 16, '#9ad1ff', 220);
+}
+
+function castNova() {
+  if (game.state !== 'playing') return;
+  if (dino.evo < 2) { hint('Evoluciona a Rex Volcanico para la Nova'); return; }
+  if (dino.novaCd > 0) return;
+  dino.novaCd = 7;
+  const dmg = 55 + dino.level * 3;
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const en = enemies[i];
+    if (Math.hypot(en.x - dino.x, en.y - dino.y) < 200) damageEnemy(en, dmg);
+  }
+  burst(dino.x, dino.y, 70, '#ffb56b', 540);
+  game.shake = 20;
+  addFloat(dino.x, dino.y - 70, 'NOVA!', '#ffb56b', 26);
+}
+
+function castMeteor() {
+  if (game.state !== 'playing') return;
+  if (dino.evo < 3) { hint('Evoluciona a Titan del Infierno para meteoros'); return; }
+  if (dino.meteorCd > 0) return;
+  dino.meteorCd = 9;
+  const targets = enemies.slice().sort(() => Math.random() - 0.5).slice(0, 6);
+  if (!targets.length) {
+    meteors.push({ x: dino.x + rand(-120, 120), y: dino.y + rand(-120, 120), t: 0.55, max: 0.55 });
+  }
+  for (const en of targets) meteors.push({ x: en.x, y: en.y, t: 0.55, max: 0.55 });
+  addFloat(dino.x, dino.y - 70, 'METEOROS!', '#ff6b3d', 26);
+}
+
+function gainXp(n) {
+  dino.xp += n;
+  while (dino.xp >= dino.xpNext) {
+    dino.xp -= dino.xpNext;
+    dino.level++;
+    dino.xpNext = Math.round(24 + dino.level * 10);
+    let evolved = false;
+    if (dino.evo < EVOLUTIONS.length - 1 && dino.level >= EVO_LEVELS[dino.evo + 1]) {
+      dino.evo++;
+      evolved = true;
+    }
+    recomputeStats(evolved ? 0.35 : 0.12);
+    const e = EVOLUTIONS[dino.evo];
+    burst(dino.x, dino.y, evolved ? 60 : 24, evolved ? e.glow : '#7dffb0', evolved ? 340 : 170);
+    addFloat(
+      dino.x,
+      dino.y - 70,
+      evolved ? 'EVOLUCION: ' + e.name : 'NIVEL ' + dino.level,
+      evolved ? e.glow : '#7dffb0',
+      evolved ? 24 : 17
+    );
+    if (evolved) game.shake = 16;
+  }
+}
+
+function damageEnemy(en, dmg) {
+  en.hp -= dmg;
+  if (en.hp <= 0) {
+    const idx = enemies.indexOf(en);
+    if (idx >= 0) enemies.splice(idx, 1);
+    game.kills++;
+    game.score += Math.round(en.maxHp);
+    gainXp(en.xp);
+    burst(en.x, en.y, 18, '#ff8a5c', 260);
+    if (Math.random() < 0.12) pickups.push({ x: en.x, y: en.y, r: 11, life: 12, wob: rand(0, TAU) });
+  }
+}
+
+function hurtDino(dmg) {
+  if (dino.invuln > 0 || game.state !== 'playing') return;
+  dino.hp -= dmg;
+  dino.invuln = 0.45;
+  game.shake = Math.max(game.shake, 10);
+  game.flash = 0.35;
+  burst(dino.x, dino.y, 12, '#ff4d4d', 220);
+  if (dino.hp <= 0) {
+    dino.hp = 0;
+    gameOver();
+  }
+}
+
+function gameOver() {
+  game.state = 'gameover';
+  game.shake = 24;
+  best = Math.max(best, game.score);
+  localStorage.setItem('dino-best', String(best));
+  showGameOver();
+}
+
+function explode(x, y, dmg) {
+  burst(x, y, 34, '#ffb56b', 320);
+  for (let j = enemies.length - 1; j >= 0; j--) {
+    const en = enemies[j];
+    if (Math.hypot(en.x - x, en.y - y) < 78) damageEnemy(en, dmg * 0.6);
+  }
+  game.shake = Math.max(game.shake, 7);
+}
+
+function spawnEnemy() {
+  if (enemies.length > 90) return;
+  const pool = ENEMY_TYPES.filter((t) => t.minWave <= game.wave);
+  const t = pool[Math.floor(Math.random() * pool.length)];
+  const edge = Math.floor(Math.random() * 4);
+  const m = 70;
+  let x, y;
+  if (edge === 0) { x = rand(0, W); y = -m; }
+  else if (edge === 1) { x = W + m; y = rand(0, H); }
+  else if (edge === 2) { x = rand(0, W); y = H + m; }
+  else { x = -m; y = rand(0, H); }
+  const scale = 1 + (game.wave - 1) * 0.18;
+  enemies.push({
+    x: x, y: y, r: t.r,
+    hp: t.hp * scale, maxHp: t.hp * scale,
+    speed: t.speed * (1 + (game.wave - 1) * 0.02),
+    dmg: t.dmg * (1 + (game.wave - 1) * 0.06),
+    xp: t.xp, type: t, cd: rand(0.5, 1.5), hitCd: 0, wob: rand(0, TAU),
+  });
+}
+
+function updateEmbers(dt) {
+  for (const em of embers) {
+    em.y -= em.v * dt;
+    if (em.y < -0.02) { em.y = 1.02; em.x = Math.random(); }
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx *= 0.94;
+    p.vy *= 0.94;
+    p.life -= dt;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+function updateFloaters(dt) {
+  for (let i = floaters.length - 1; i >= 0; i--) {
+    const f = floaters[i];
+    f.y -= 40 * dt;
+    f.life -= dt;
+    if (f.life <= 0) floaters.splice(i, 1);
+  }
+}
+
+function update(dt) {
+  game.time += dt;
+  if (game.shake > 0) game.shake = Math.max(0, game.shake - dt * 45);
+  if (game.flash > 0) game.flash = Math.max(0, game.flash - dt * 2.2);
+  updateEmbers(dt);
+  updateParticles(dt);
+  updateFloaters(dt);
+
+  if (game.state !== 'playing') return;
+
+  dino.fireCd = Math.max(0, dino.fireCd - dt);
+  dino.dashCd = Math.max(0, dino.dashCd - dt);
+  dino.novaCd = Math.max(0, dino.novaCd - dt);
+  dino.meteorCd = Math.max(0, dino.meteorCd - dt);
+  dino.invuln = Math.max(0, dino.invuln - dt);
+
+  game.waveTimer += dt;
+  if (game.waveTimer >= 24) {
+    game.waveTimer = 0;
+    game.wave++;
+    addFloat(dino.x, dino.y - 90, 'OLEADA ' + game.wave, '#ffd23f', 24);
+    game.shake = Math.max(game.shake, 8);
+  }
+
+  game.spawnCd -= dt;
+  if (game.spawnCd <= 0) {
+    spawnEnemy();
+    if (game.wave >= 3 && Math.random() < 0.35) spawnEnemy();
+    if (game.wave >= 6 && Math.random() < 0.25) spawnEnemy();
+    game.spawnCd = Math.max(0.3, 1.35 - game.wave * 0.09) * rand(0.8, 1.2);
+  }
+
+  const mv = movementVector();
+  if (dino.dash > 0) {
+    dino.dash -= dt;
+    dino.x += Math.cos(dino.dashDir) * 900 * dt;
+    dino.y += Math.sin(dino.dashDir) * 900 * dt;
+  } else {
+    dino.x += mv.x * dino.speed * dt;
+    dino.y += mv.y * dino.speed * dt;
+  }
+  const pad = dino.r + 6;
+  dino.x = clamp(dino.x, pad, W - pad);
+  dino.y = clamp(dino.y, pad, H - pad);
+  dino.walk += ((mv.x || mv.y) ? 12 : 2) * dt;
+
+  if (mouse.moved) dino.aim = Math.atan2(mouse.y - dino.y, mouse.x - dino.x);
+  else if (mv.x || mv.y) dino.aim = Math.atan2(mv.y, mv.x);
+  dino.facing = Math.cos(dino.aim) >= 0 ? 1 : -1;
+
+  if (mouse.down || keys.Space) fire();
+
+  updateEnemies(dt);
+  updatePlayerProjectiles(dt);
+  updateEnemyProjectiles(dt);
+  updateMeteors(dt);
+  updatePickups(dt);
+}
+
+function updateEnemies(dt) {
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const en = enemies[i];
+    en.cd -= dt;
+    en.hitCd = Math.max(0, en.hitCd - dt);
+    en.wob += dt;
+    const dx = dino.x - en.x;
+    const dy = dino.y - en.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const t = en.type;
+
+    if (t.ranged) {
+      const want = 240;
+      const dir = d > want + 40 ? 1 : (d < want - 40 ? -1 : 0);
+      en.x += (dx / d) * en.speed * dir * dt;
+      en.y += (dy / d) * en.speed * dir * dt;
+      if (en.cd <= 0 && d < 660) {
+        en.cd = t.cd * rand(0.85, 1.15);
+        const a = Math.atan2(dy, dx);
+        eprojectiles.push({
+          x: en.x, y: en.y,
+          vx: Math.cos(a) * t.projSpeed,
+          vy: Math.sin(a) * t.projSpeed,
+          r: t.projR, dmg: en.dmg, color: t.projColor, life: 2.4,
+        });
+      }
+    } else {
+      en.x += (dx / d) * en.speed * dt;
+      en.y += (dy / d) * en.speed * dt;
+    }
+
+    if (d < en.r + dino.r && en.hitCd <= 0 && dino.invuln <= 0) {
+      hurtDino(en.dmg);
+      en.hitCd = 0.9;
+    }
+  }
+}
+
+function updatePlayerProjectiles(dt) {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0 || p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) {
+      if (p.explode) explode(p.x, p.y, p.dmg);
+      projectiles.splice(i, 1);
+      continue;
+    }
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const en = enemies[j];
+      if (Math.hypot(p.x - en.x, p.y - en.y) < p.r + en.r) {
+        damageEnemy(en, p.dmg);
+        burst(p.x, p.y, 8, p.color, 190);
+        if (p.explode) explode(p.x, p.y, p.dmg);
+        projectiles.splice(i, 1);
+        break;
+      }
+    }
+  }
+}
+
+function updateEnemyProjectiles(dt) {
+  for (let i = eprojectiles.length - 1; i >= 0; i--) {
+    const p = eprojectiles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0 || p.x < -40 || p.x > W + 40 || p.y < -40 || p.y > H + 40) {
+      eprojectiles.splice(i, 1);
+      continue;
+    }
+    if (Math.hypot(p.x - dino.x, p.y - dino.y) < p.r + dino.r) {
+      hurtDino(p.dmg);
+      eprojectiles.splice(i, 1);
+    }
+  }
+}
+
+function updateMeteors(dt) {
+  for (let i = meteors.length - 1; i >= 0; i--) {
+    const m = meteors[i];
+    m.t -= dt;
+    if (m.t <= 0) {
+      burst(m.x, m.y, 44, '#ff6b3d', 440);
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const en = enemies[j];
+        if (Math.hypot(en.x - m.x, en.y - m.y) < 115) damageEnemy(en, 95 + dino.level * 4);
+      }
+      game.shake = Math.max(game.shake, 14);
+      meteors.splice(i, 1);
+    }
+  }
+}
+
+function updatePickups(dt) {
+  for (let i = pickups.length - 1; i >= 0; i--) {
+    const pk = pickups[i];
+    pk.life -= dt;
+    pk.wob += dt * 3;
+    const d = Math.hypot(pk.x - dino.x, pk.y - dino.y);
+    if (d < dino.r + pk.r + 8) {
+      dino.hp = Math.min(dino.maxHp, dino.hp + dino.maxHp * 0.18);
+      burst(pk.x, pk.y, 14, '#7dffb0', 200);
+      addFloat(pk.x, pk.y - 16, '+VIDA', '#7dffb0', 14);
+      pickups.splice(i, 1);
+      continue;
+    }
+    if (pk.life <= 0) pickups.splice(i, 1);
+  }
+}
+
+function drawBackground() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#170b07');
+  g.addColorStop(0.55, '#1d0d09');
+  g.addColorStop(1, '#090403');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  if (!dino) return;
+  const r = ctx.createRadialGradient(dino.x, dino.y, 30, dino.x, dino.y, Math.max(W, H) * 0.55);
+  r.addColorStop(0, 'rgba(255,90,30,0.12)');
+  r.addColorStop(1, 'rgba(255,90,30,0)');
+  ctx.fillStyle = r;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawEmbers() {
+  for (const em of embers) {
+    ctx.globalAlpha = 0.3 + Math.abs(Math.sin(em.y * 18 + game.time * 2.5)) * 0.25;
+    ctx.fillStyle = '#ff8a3d';
+    ctx.beginPath();
+    ctx.arc(em.x * W, em.y * H, em.r, 0, TAU);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawDino() {
+  const e = EVOLUTIONS[dino.evo];
+  const r = dino.r;
+  const bob = Math.sin(dino.walk) * 2.5;
+  ctx.save();
+  ctx.translate(dino.x, dino.y);
+  if (dino.invuln > 0) ctx.globalAlpha = 0.55 + Math.abs(Math.sin(game.time * 26)) * 0.45;
+
+  const aura = ctx.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 3);
+  aura.addColorStop(0, hexA(e.glow, 0.32));
+  aura.addColorStop(0.5, hexA(e.glow, 0.1));
+  aura.addColorStop(1, hexA(e.glow, 0));
+  ctx.fillStyle = aura;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 3, 0, TAU);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(0, r * 0.98, r * 1.2, r * 0.4, 0, 0, TAU);
+  ctx.fill();
+
+  ctx.save();
+  ctx.scale(dino.facing, 1);
+
+  ctx.fillStyle = shade(e.color, -45);
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.5, -r * 0.3);
+  ctx.quadraticCurveTo(-r * 2.0, -r * 0.9 + bob, -r * 2.7, r * 0.15);
+  ctx.quadraticCurveTo(-r * 1.9, r * 0.55, -r * 0.4, r * 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = shade(e.color, -25);
+  ctx.fillRect(-r * 0.55, r * 0.42, r * 0.42, r * 0.72);
+  ctx.fillRect(r * 0.15, r * 0.42, r * 0.42, r * 0.72);
+
+  ctx.fillStyle = e.color;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 1.05, r * 0.8, 0, 0, TAU);
+  ctx.fill();
+
+  ctx.fillStyle = shade(e.color, 48);
+  ctx.beginPath();
+  ctx.ellipse(r * 0.12, r * 0.22, r * 0.6, r * 0.38, 0, 0, TAU);
+  ctx.fill();
+
+  ctx.fillStyle = shade(e.color, 72);
+  for (let i = 0; i < 4; i++) {
+    const sx = -r * 0.75 + i * r * 0.45;
+    ctx.beginPath();
+    ctx.moveTo(sx, -r * 0.6);
+    ctx.lineTo(sx + r * 0.16, -r * 1.02);
+    ctx.lineTo(sx + r * 0.32, -r * 0.6);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.fillStyle = e.color;
+  ctx.beginPath();
+  ctx.ellipse(r * 0.95, -r * 0.35, r * 0.62, r * 0.5, -0.25, 0, TAU);
+  ctx.fill();
+
+  ctx.fillStyle = shade(e.color, -12);
+  ctx.beginPath();
+  ctx.ellipse(r * 1.25, -r * 0.02, r * 0.42, r * 0.24, 0.15, 0, TAU);
+  ctx.fill();
+
+  ctx.fillStyle = '#1a0a06';
+  ctx.beginPath();
+  ctx.arc(r * 1.1, -r * 0.46, r * 0.12, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = '#ffef9e';
+  ctx.beginPath();
+  ctx.arc(r * 1.13, -r * 0.48, r * 0.05, 0, TAU);
+  ctx.fill();
+
+  const ga = 0.5 + 0.5 * Math.sin(game.time * 10);
+  ctx.fillStyle = hexA(e.glow, 0.45 + 0.35 * ga);
+  ctx.beginPath();
+  ctx.arc(r * 1.45, -r * 0.02, r * 0.14 + ga * 2.2, 0, TAU);
+  ctx.fill();
+
+  ctx.restore();
+  ctx.restore();
+}
+
+function drawEnemy(en) {
+  const t = en.type;
+  const ang = Math.atan2(dino.y - en.y, dino.x - en.x);
+  ctx.save();
+  ctx.translate(en.x, en.y);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(0, en.r * 0.85, en.r * 0.95, en.r * 0.35, 0, 0, TAU);
+  ctx.fill();
+
+  ctx.save();
+  ctx.rotate(ang - Math.PI / 2);
+  if (t.ranged) {
+    ctx.strokeStyle = t.projColor;
+    ctx.lineWidth = t.id === 'gunner' ? 4 : (t.id === 'archer' ? 2.5 : 3.5);
+    ctx.beginPath();
+    ctx.moveTo(0, en.r * 0.3);
+    ctx.lineTo(0, en.r * 1.75);
+    ctx.stroke();
+    if (t.id === 'archer') {
+      ctx.beginPath();
+      ctx.arc(0, en.r * 1.5, en.r * 0.55, -1.15, 1.15);
+      ctx.stroke();
+    }
+  } else {
+    ctx.strokeStyle = '#c9a06a';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, en.r * 0.2);
+    ctx.lineTo(0, en.r * 1.55);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.fillStyle = t.color;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, en.r * 0.7, en.r * 0.88, 0, 0, TAU);
+  ctx.fill();
+
+  ctx.fillStyle = shade(t.color, 25);
+  ctx.beginPath();
+  ctx.arc(0, -en.r * 0.15, en.r * 0.5, 0, TAU);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(20,10,8,0.82)';
+  ctx.fillRect(-en.r * 0.42, -en.r * 0.42, en.r * 0.84, en.r * 0.22);
+  ctx.restore();
+
+  if (en.hp < en.maxHp) {
+    const w = en.r * 2;
+    const h = 4;
+    const x = en.x - w / 2;
+    const y = en.y - en.r * 1.65;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#ff5b5b';
+    ctx.fillRect(x, y, w * Math.max(0, en.hp / en.maxHp), h);
+  }
+}
+
+function drawFireball(p) {
+  const g = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, p.r * 2.3);
+  g.addColorStop(0, '#fff6c0');
+  g.addColorStop(0.4, p.color);
+  g.addColorStop(1, 'rgba(255,60,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, p.r * 2.3, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = '#fff2a8';
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, p.r * 0.55, 0, TAU);
+  ctx.fill();
+}
+
+function drawEnemyProjectile(p) {
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.strokeStyle = p.color;
+  ctx.lineWidth = p.r * 1.3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(p.x - p.vx * 0.012, p.y - p.vy * 0.012);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, p.r * 0.5, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawMeteor(m) {
+  const prog = 1 - m.t / m.max;
+  const sx = m.x;
+  const sy = m.y - (1 - prog) * Math.max(340, H * 0.6);
+  const g = ctx.createRadialGradient(sx, sy, 2, sx, sy, 34);
+  g.addColorStop(0, '#fff3b0');
+  g.addColorStop(0.4, '#ff8a3d');
+  g.addColorStop(1, 'rgba(255,60,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(sx, sy, 34, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,120,60,' + (0.35 + 0.3 * Math.sin(game.time * 20)) + ')';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(m.x, m.y, 40 + prog * 55, 0, TAU);
+  ctx.stroke();
+}
+
+function drawPickup(pk) {
+  const s = 1 + Math.sin(pk.wob) * 0.15;
+  ctx.save();
+  ctx.translate(pk.x, pk.y);
+  ctx.scale(s, s);
+  const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 22);
+  g.addColorStop(0, 'rgba(125,255,176,0.9)');
+  g.addColorStop(1, 'rgba(125,255,176,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, 22, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = '#eafff2';
+  ctx.fillRect(-3, -9, 6, 18);
+  ctx.fillRect(-9, -3, 18, 6);
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, TAU);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawFloaters() {
+  for (const f of floaters) {
+    const a = clamp(f.life / f.max, 0, 1);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = f.color;
+    ctx.font = '800 ' + f.size + 'px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 8;
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'start';
+}
+
+function render() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+
+  ctx.save();
+  if (game.shake > 0) {
+    ctx.translate(rand(-game.shake, game.shake) * 0.6, rand(-game.shake, game.shake) * 0.6);
+  }
+
+  drawEmbers();
+
+  for (const pk of pickups) drawPickup(pk);
+  for (const p of eprojectiles) drawEnemyProjectile(p);
+  for (const en of enemies) drawEnemy(en);
+  for (const p of projectiles) drawFireball(p);
+  drawDino();
+  for (const m of meteors) drawMeteor(m);
+  drawParticles();
+  drawFloaters();
+
+  ctx.restore();
+
+  if (game.flash > 0) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = 'rgba(255,40,20,' + (game.flash * 0.45) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function setChip(el, reqEvo, cd) {
+  const locked = dino.evo < reqEvo;
+  el.classList.toggle('locked', locked);
+  const cdEl = el.querySelector('.cd');
+  if (locked) cdEl.textContent = 'BLOQ.';
+  else if (cd > 0) cdEl.textContent = cd.toFixed(1) + 's';
+  else cdEl.textContent = 'LISTO';
+}
+
+function updateHUD() {
+  if (!dino) return;
+  const e = EVOLUTIONS[dino.evo];
+  hud.evoName.textContent = e.name.toUpperCase();
+  hud.evoName.style.color = e.glow;
+  hud.levelTxt.textContent = 'Nv. ' + dino.level;
+  hud.hpFill.style.width = Math.max(0, dino.hp / dino.maxHp * 100) + '%';
+  hud.xpFill.style.width = Math.max(0, dino.xp / dino.xpNext * 100) + '%';
+  hud.hpTxt.textContent = Math.ceil(dino.hp) + ' / ' + Math.round(dino.maxHp);
+  hud.xpTxt.textContent = Math.floor(dino.xp) + ' / ' + dino.xpNext + ' XP';
+  hud.waveTxt.textContent = game.wave;
+  hud.scoreTxt.textContent = game.score;
+  hud.killsTxt.textContent = game.kills;
+  setChip(hud.chipDash, 1, dino.dashCd);
+  setChip(hud.chipNova, 2, dino.novaCd);
+  setChip(hud.chipMeteor, 3, dino.meteorCd);
+}
+
+function initEmbers() {
+  embers = [];
+  for (let i = 0; i < 70; i++) {
+    embers.push({ x: Math.random(), y: Math.random(), r: rand(0.4, 2.2), v: rand(0.01, 0.05) });
+  }
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.033, (now - last) / 1000);
+  last = now;
+  update(dt);
+  render();
+  updateHUD();
+  requestAnimationFrame(loop);
+}
+
+resetWorld('menu');
+initEmbers();
+showMenu();
+requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
